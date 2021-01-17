@@ -47,7 +47,7 @@ func buildLinks(n *html.Node) Link {
 	var ret Link
 	for _, attr := range n.Attr {
 		if attr.Key == "href" {
-			ret.Href = "Href:" + attr.Val
+			ret.Href = attr.Val
 			break
 		}
 	}
