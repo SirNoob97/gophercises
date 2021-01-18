@@ -1,29 +1,56 @@
 package main
 
 import (
+	"encoding/xml"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 
 	link "github.com/SirNoob97/gophercises/html-link-parser"
 )
 
-func main() {
-	urlFlag := flag.String("url", "https://gophercises.com", "the url that you want to build a sitemap for")
-	flag.Parse()
-	fmt.Println(*urlFlag)
+const xmlns = "https://www.sitemaps.org/schemas/sitemap/9.0"
 
-	views := getLinks(*urlFlag)
-
-	for _, v := range views {
-		fmt.Println(v)
-	}
+type loc struct {
+	Loc string `xml:"loc"`
 }
 
+type urlSet struct {
+	URLs  []loc  `xml:"url"`
+	Xmlns string `xml:"xmlns,attr"`
+}
+
+func main() {
+	urlFlag := flag.String("url", "https://gophercises.com", "the url that you want to build a sitemap for")
+	maxDepth := flag.Int("depth", 10, "the maximun number of links deep to traverse")
+	flag.Parse()
+
+	views := bfs(*urlFlag, *maxDepth)
+
+	toXML := urlSet{
+		Xmlns: xmlns,
+	}
+	for _, view := range views {
+		toXML.URLs = append(toXML.URLs, loc{view})
+	}
+
+	fmt.Print(xml.Header)
+	enc := xml.NewEncoder(os.Stdout)
+	enc.Indent("", "  ")
+
+	if err := enc.Encode(toXML); err != nil {
+		exit(err.Error())
+	}
+
+	fmt.Println()
+}
+
+// check if you have already visited the url
 func bfs(urlStr string, maxDepth int) []string {
 	seen := make(map[string]struct{})
 	var q map[string]struct{}
@@ -31,15 +58,20 @@ func bfs(urlStr string, maxDepth int) []string {
 		urlStr: struct{}{},
 	}
 
-	for i := 0; i < maxDepth; i++ {
+	for i := 0; i <= maxDepth; i++ {
 		q, nq = nq, make(map[string]struct{})
+		if len(q) == 0 {
+			break
+		}
 		for url := range q {
 			if _, ok := seen[url]; ok {
 				continue
 			}
+
 			seen[url] = struct{}{}
+
 			for _, link := range getLinks(url) {
-				nq[link] = struct{}{}
+					nq[link] = struct{}{}
 			}
 		}
 	}
@@ -88,7 +120,7 @@ func filter(links []string, keepFunc func(string) bool) []string {
 func hrefs(r io.Reader, base string) []string {
 	links, err := link.Parser(r)
 	if err != nil {
-		exit(err.Error())
+		return []string{}
 	}
 
 	var ret []string
