@@ -57,14 +57,14 @@ func min(a, b int) int {
 }
 
 // Shuffle ..
-func Shuffle(gs GameStatus) GameStatus {
+func Shuffle(gs GameState) GameState {
 	ret := clone(gs)
 	ret.Deck = deck.New(deck.Deck(3), deck.Shuffle)
 	return ret
 }
 
 // Deal ...
-func Deal(gs GameStatus) GameStatus {
+func Deal(gs GameState) GameState {
 	ret := clone(gs)
 	ret.Player = make(Hand, 0, 5)
 	ret.Dealer = make(Hand, 0, 5)
@@ -81,9 +81,9 @@ func Deal(gs GameStatus) GameStatus {
 }
 
 // Hit ...
-func Hit(gs GameStatus) GameStatus {
+func Hit(gs GameState) GameState {
 	ret := clone(gs)
-	hand := ret.CurrentPlayer()
+	hand := ret.CurrentHand()
 	var card deck.Card
 	card, ret.Deck = draw(ret.Deck)
 	*hand = append(*hand, card)
@@ -96,14 +96,14 @@ func Hit(gs GameStatus) GameStatus {
 }
 
 // Stand ...
-func Stand(gs GameStatus) GameStatus {
+func Stand(gs GameState) GameState {
 	ret := clone(gs)
 	ret.State++
 	return ret
 }
 
 // FinalHand ...
-func FinalHand(gs GameStatus) GameStatus {
+func FinalHand(gs GameState) GameState {
 	ret := clone(gs)
 	pScore, dScore := ret.Player.Score(), ret.Dealer.Score()
 	fmt.Println("***FINAL HAND***")
@@ -130,7 +130,7 @@ func FinalHand(gs GameStatus) GameStatus {
 }
 
 func main() {
-	var gs GameStatus
+	var gs GameState
 	gs = Shuffle(gs)
 
 	for i := 0; i < 10; i++ {
@@ -179,16 +179,16 @@ const (
 	StateHandOver
 )
 
-// GameStatus ...
-type GameStatus struct {
+// GameState ...
+type GameState struct {
 	Deck   []deck.Card
 	State  State
 	Player Hand
 	Dealer Hand
 }
 
-// CurrentPlayer get the current player
-func (g *GameStatus) CurrentPlayer() *Hand {
+// CurrentHand get the current player
+func (g *GameState) CurrentHand() *Hand {
 	switch g.State {
 	case StatePlayerTurn:
 		return &g.Player
@@ -199,8 +199,8 @@ func (g *GameStatus) CurrentPlayer() *Hand {
 	}
 }
 
-func clone(gs GameStatus) GameStatus {
-	ret := GameStatus{
+func clone(gs GameState) GameState {
+	ret := GameState{
 		Deck:   make([]deck.Card, len(gs.Deck)),
 		State:  gs.State,
 		Player: make(Hand, len(gs.Player)),
