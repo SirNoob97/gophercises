@@ -6,9 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net/http"
+	"math/rand"
 	"os"
-	"strings"
+	"time"
+
+	"github.com/SirNoob97/gophercises/twitter-rt-contest/twitter"
 )
 
 func main() {
@@ -16,11 +18,13 @@ func main() {
 		keysFile  string
 		usersFile string
 		tweetID   string
+		nWinners  int
 	)
 
 	flag.StringVar(&keysFile, "keys", ".keys.json", "The file where you store your consumer key and secret for the twitter API.")
 	flag.StringVar(&usersFile, "file", "users.csv", "The file where users who have retweeted the tweet are stored. This will be created if does not exist.")
 	flag.StringVar(&tweetID, "tweet", "1353417790804385792", "The ID of the tweet you wish to find retweeters of.")
+	flag.IntVar(&nWinners, "winners", 0, "The number of winners to pick for the contest.")
 	flag.Parse()
 
 	consumer, secret, err := keys(keysFile)
@@ -28,12 +32,11 @@ func main() {
 		log.Fatalf("Could not find the file %s", keysFile)
 	}
 
-	var client http.Client
-	accessToken, err := twitterToken(&client, consumer, secret)
+	client, err := twitter.New(consumer, secret)
 	if err != nil {
 		log.Fatal(err)
 	}
-	newUsersnames, err := retweeters(&client, accessToken, tweetID)
+	newUsersnames, err := client.Retweeters(tweetID)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -44,6 +47,14 @@ func main() {
 	err = persistUser(usersFile, allUsernames)
 	if err != nil {
 		log.Fatal(err)
+	}
+
+	if nWinners != 0 {
+		existUsernames = existing(usersFile)
+		winners := pickWinners(existUsernames, nWinners)
+		for _, user := range winners {
+			fmt.Printf("  * %s\n", user)
+		}
 	}
 }
 
@@ -63,65 +74,6 @@ func keys(keysFile string) (string, string, error) {
 	dec.Decode(&keys)
 
 	return keys.Key, keys.Secret, nil
-}
-
-func twitterToken(client *http.Client, consumer, secret string) (string, error) {
-	req, err := http.NewRequest("POST", "https://api.twitter.com/oauth2/token", strings.NewReader("grant_type=client_credentials"))
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded;charset=UTF-8")
-	req.SetBasicAuth(consumer, secret)
-
-	res, err := client.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer res.Body.Close()
-
-	var token struct {
-		Type  string `json:"token_type"`
-		Token string `json:"access_token"`
-	}
-
-	dec := json.NewDecoder(res.Body)
-	err = dec.Decode(&token)
-	if err != nil {
-		return "", err
-	}
-	accessToken := "Bearer " + token.Token
-	return accessToken, nil
-}
-
-func retweeters(client *http.Client, accessToken, twID string) ([]string, error) {
-	url := fmt.Sprintf("https://api.twitter.com/1.1/statuses/retweets/%s.json", twID)
-	req, err := http.NewRequest("GET", url, strings.NewReader(""))
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header.Set("Authorization", accessToken)
-	res, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer res.Body.Close()
-
-	var rts []struct {
-		User struct {
-			ScreenName string `json:"screen_name"`
-		} `json:"user"`
-	}
-
-	dec := json.NewDecoder(res.Body)
-	err = dec.Decode(&rts)
-	if err != nil {
-		panic(err)
-	}
-
-	retweeters := make([]string, 0, len(rts))
-	for _, user := range rts {
-		retweeters = append(retweeters, user.User.ScreenName)
-	}
-
-	return retweeters, nil
 }
 
 func existing(usersFile string) []string {
@@ -174,4 +126,15 @@ func persistUser(usersFile string, users []string) error {
 		return err
 	}
 	return nil
+}
+
+func pickWinners(users []string, nWinners int) []string {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	perm := r.Perm(len(users))
+	winners := perm[:nWinners]
+	ret := make([]string, 0, nWinners)
+	for _, idx := range winners {
+		ret = append(ret, users[idx])
+	}
+	return ret
 }
