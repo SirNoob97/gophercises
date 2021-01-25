@@ -3,6 +3,7 @@ module github.com/SirNoob97/gophercises
 go 1.15
 
 require (
+	github.com/alecthomas/chroma v0.8.2
 	github.com/gofrs/uuid v4.0.0+incompatible // indirect
 	github.com/jackc/pgx/v4 v4.10.1
 	github.com/lib/pq v1.9.0 // indirect
