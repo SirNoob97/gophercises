@@ -1,2 +1,5 @@
 .keys.json
 users.csv
+
+tmp/*
+img/*
