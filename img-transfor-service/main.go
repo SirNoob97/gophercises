@@ -45,8 +45,6 @@ func main() {
 			return
 		}
 		renderMoreChoices(w, r, f, ext, mode)
-		w.Header().Set("Content-Type", fmt.Sprintf("image/%s", ext))
-		io.Copy(w, f)
 	})
 	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		file, header, err := r.FormFile("image")
@@ -146,5 +144,8 @@ func renderMoreChoices(w http.ResponseWriter, r *http.Request, f io.ReadSeeker, 
 		{Name: filepath.Base(c), Mode: primitive.ModeRect},
 		{Name: filepath.Base(d), Mode: primitive.ModeTriangle},
 	}
-	tmpl.Execute(w, data)
+  err =	tmpl.Execute(w, data)
+  if err != nil {
+    panic(err)
+  }
 }

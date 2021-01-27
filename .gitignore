@@ -2,4 +2,4 @@
 users.csv
 
 tmp/*
-img/*
+/img/*
